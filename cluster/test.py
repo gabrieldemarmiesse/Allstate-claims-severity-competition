@@ -133,3 +133,5 @@ df = sqlContext.createDataFrame(final_rdd, schema = data_schema).coalesce(12).ca
 
 print(df.rdd.first())
 print(final_rdd.getNumPartitions())
+df.write.csv('df.csv')
+
