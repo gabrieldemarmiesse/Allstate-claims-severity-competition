@@ -1,5 +1,13 @@
+from __future__ import print_function
+def print(*arg):
+	mystring = ""
+	for argument in arg:
+		mystring += str(argument)
+	f = open('log.txt', 'a')
+	f.write(mystring + "\n")
+	f.close()
+
 # Initialize SparkContext
-import os
 import sys
 from pyspark import SparkContext
 from pyspark import SparkConf
@@ -33,11 +41,14 @@ from pyspark.mllib.regression import LinearRegressionWithSGD
 from pyspark.mllib.linalg.distributed import RowMatrix
 
 input_path = "./train.csv"
-raw_data = sc.textFile(input_path)
-print("number of rows before cleaning:", raw_data.count())
+raw_data = sc.textFile(input_path , 30)
+print("number of partitions ", raw_data.getNumPartitions())
 
 # extract the header
 header = raw_data.first()
+
+#raw_data = raw_data.repartition(18)
+
 
 # replace invalid data with NULL and remove header
 cleaned_data = raw_data.filter(lambda row: row != header)
@@ -115,8 +126,10 @@ def replace(row):
             tuple_of_ints += (0,)
     return (row[0],) + tuple_of_ints + row[117:]
 	
-final_rdd = cleaned_data_splitted.map(replace)
+final_rdd = cleaned_data_splitted.map(replace).cache()
+
 
 df = sqlContext.createDataFrame(final_rdd, schema = data_schema).coalesce(12).cache()
 
-print(df.rdd.take(5))
+print(df.rdd.first())
+print(final_rdd.getNumPartitions())
