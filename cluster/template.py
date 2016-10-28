@@ -18,6 +18,7 @@ import re
 from pyspark import SparkContext
 from pyspark import SparkContext
 from pyspark.sql import SQLContext
+sqlContext = SQLContext(sc)
 from pyspark.sql import types
 from pyspark.sql import Row
 from pyspark.sql import functions
@@ -40,6 +41,4 @@ from pyspark.mllib.classification import NaiveBayes
 from pyspark.mllib.regression import LinearRegressionWithSGD
 from pyspark.mllib.linalg.distributed import RowMatrix
 
-spark = SparkSession.builder.master("local").appName("All state Kaggle competition").getOrCreate()
-
-print(spark.read.csv("df.csv").rdd.first())
+df = sqlContext.createDataFrame(sc.pickleFile("rdd.p", 30), ["label", "features"]).cache()
