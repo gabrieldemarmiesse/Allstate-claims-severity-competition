@@ -1,13 +1,12 @@
 # coding=utf-8
-
 from __future__ import print_function
 def print(*arg):
-	mystring = ""
-	for argument in arg:
-		mystring += str(argument)
-	f = open('log.txt', 'a')
-	f.write(mystring + "\n")
-	f.close()
+    mystring = ""
+    for argument in arg:
+        mystring += str(argument)
+    f = open('log.txt', 'a')
+    f.write(mystring + "\n")
+    f.close()
 
 # Initialize SparkContext
 import sys
@@ -55,3 +54,39 @@ from pyspark.ml.feature import HashingTF, Tokenizer
 from pyspark.ml.tuning import CrossValidator, ParamGridBuilder
 
 df = sqlContext.createDataFrame(sc.pickleFile("rdd.p", 30), ["label", "features"]).cache()
+
+from pyspark.ml.regression import LinearRegression
+from pyspark.ml.feature import MinMaxScaler
+# Defining the transformations
+scaler = MinMaxScaler(inputCol="features", outputCol="scaledFeatures").fit(df)
+
+print(scaler.transform(df).show(1))
+dt = LinearRegression(featuresCol="scaledFeatures")
+
+# defining the pipeline
+pipeline = Pipeline(stages=[scaler,dt])
+
+# defining the parameters to test
+paramGrid = ParamGridBuilder() \
+    .addGrid(dt.maxIter, [25]) \
+    .build()
+    
+myEvaluator = RegressionEvaluator(metricName="mae")
+# defining the cross-validation
+crossval = CrossValidator(estimator=pipeline,
+                          estimatorParamMaps=paramGrid,
+                          evaluator=myEvaluator,
+                          numFolds=2)  # use 3+ folds in practice
+
+# Run cross-validation, and choose the best set of parameters.
+cvModel = crossval.fit(df)
+
+print(cvModel.avgMetrics)
+print(myEvaluator.evaluate(cvModel.bestModel.transform(df)))
+print(cvModel.bestModel.stages)
+
+
+
+
+
+
