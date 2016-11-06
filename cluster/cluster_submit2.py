@@ -107,26 +107,27 @@ df.unpersist()
 # Defining the transformations
 indexer_cat = VectorIndexer(inputCol="cat_features", outputCol="cat_indexedFeatures", maxCategories=300).fit(df1)
 indexer_cont = VectorIndexer(inputCol="cont_bucked_features", outputCol="cont_indexedFeatures", maxCategories=7).fit(df1)
-slicer_cat = VectorSlicer(inputCol="cat_indexedFeatures", outputCol="sliced_cat_Features", indices=features_to_keep)
+slicer_cat = VectorSlicer(inputCol="cat_indexedFeatures", outputCol="sliced_cat_Features", indices=list(range(116)))
 slicer_cont = VectorSlicer(inputCol="cont_indexedFeatures", outputCol="sliced_cont_Features", indices = list(range(14)))
 assembler = VectorAssembler(inputCols=["sliced_cat_Features", "sliced_cont_Features"], outputCol="features")
 
 rf = RandomForestRegressor(labelCol="label", featuresCol="features", maxBins=300,\
                            maxMemoryInMB=500, subsamplingRate=0.9, cacheNodeIds=True, 
-                           checkpointInterval=10, numTrees=5)
+                           checkpointInterval=10)
 
 df2 = apply(df1,[indexer_cat, indexer_cont, slicer_cat, slicer_cont, assembler]).cache()
 df1.unpersist()
 # defining the pipeline
 pipeline = Pipeline(stages=[rf])
 
-depths = [8,9,10,11,12]
+ntrees = [10,12,14,16,18,20]
 
-for depth in depths:
+for n in ntrees:
 
     # defining the parameters to test
     paramGrid = ParamGridBuilder() \
-        .addGrid(rf.maxDepth, [depth]) \
+        .addGrid(rf.maxDepth, [12]) \
+		.addGrid(rf.numTrees, [n]) \
         .build()
 
     myRegressor = RegressionEvaluator(metricName="mae")
@@ -139,7 +140,7 @@ for depth in depths:
 
     # Run cross-validation, and choose the best set of parameters.
     cvModel = crossval.fit(df2)
-    print("depth:" + str(depth))
+    print("ntrees:" + str(n))
     print(cvModel.avgMetrics[0]/3)
     print(myRegressor.evaluate(cvModel.bestModel.transform(df2)))
     print(cvModel.bestModel.stages)
